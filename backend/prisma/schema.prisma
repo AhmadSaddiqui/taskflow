@@ -1,0 +1,55 @@
+// -----------------------------------------------------
+// Prisma schema for Task-API Backend
+// Day 2 — Auth Core (Access + Refresh Tokens)
+// -----------------------------------------------------
+
+// The Prisma client generator — this creates a strongly-typed client
+// under /src/generated/prisma to query your database in TypeScript.
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+// Database connection
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------
+// MODELS
+// -----------------------------------------------------
+
+// 1️⃣  USER MODEL
+// Represents an account in your system.
+// Stores credentials and links to multiple active sessions.
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 1-to-many relationship: a user can have many sessions
+  sessions    Session[]
+}
+
+// 2️⃣  SESSION MODEL
+// Represents one refresh-token session tied to a user.
+// Enables rotation, revocation, and reuse detection.
+model Session {
+  id               String   @id @default(cuid())
+  userId           String
+  refreshTokenHash String   @unique      // hashed refresh token (never store plaintext)
+  userAgent        String?                 // optional: browser/device fingerprint
+  ip               String?                 // optional: last known IP
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime                // refresh token expiry (7 days typical)
+  revokedAt        DateTime?               // set when user signs out or token reused
+  lastUsedAt       DateTime?               // updated on refresh rotation
+
+  // Relation back to user
+  user             User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
